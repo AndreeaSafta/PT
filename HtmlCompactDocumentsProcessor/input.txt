@@ -1,0 +1,11 @@
+<html>
+    <head>Head Content</head>
+    <body bgcolor="yellow">
+        <hr width="20px">
+        <div align="left" width="100px">
+	        <label>Do you like cheese?</label>
+	    	<input type="checkbox" name="cheese">
+        </div>
+    </body>
+</html>
+

@@ -1,0 +1,479 @@
+/*
+   Simple +/-/* expression language; 
+   parser evaluates constant expressions on the fly
+*/
+
+package cup.example;
+
+import java_cup.runtime.*;
+import cup.example.Lexer;
+import java.io.IOException;
+import java.io.File;
+import java.io.FileInputStream;
+import cup.multi.tree.MultiTree;
+import cup.multi.tree.MultiTreeNode;
+
+parser code {:
+	protected Lexer lexer;
+	protected MultiTree multiTree = new MultiTree();
+
+	public MultiTree getTree()
+	{
+		return multiTree;
+	}
+	
+	protected MultiTreeNode createContent(String data) { throw new UnsupportedOperationException();}
+	protected MultiTreeNode createAttribute(String attribute, String data) { throw new UnsupportedOperationException();}
+	protected MultiTreeNode createElement(String elementName, MultiTreeNode content) { throw new UnsupportedOperationException();}
+	protected MultiTreeNode createElement(String elementName, String contentAsString) { throw new UnsupportedOperationException();}
+	protected MultiTreeNode createElement (String elementName, MultiTreeNode attributeList, MultiTreeNode contentList) { throw new UnsupportedOperationException();}
+:}
+
+/* define how to connect to the scanner! */
+init with {:
+  ComplexSymbolFactory f = new ComplexSymbolFactory();
+  symbolFactory = f;
+  File file = new File("C://TdTxts/input2.txt");
+  FileInputStream fis = null;
+  try {
+    fis = new FileInputStream(file);
+  } catch (IOException e) {
+    e.printStackTrace();
+  } 
+  lexer = new Lexer(f,fis);
+:};
+scan with {: return lexer.next_token(); :};
+
+/* Terminals (tokens returned by the scanner). */
+terminal            SEMI, PLUS, MINUS, UMINUS, TIMES, LPAREN, RPAREN;
+terminal Integer    NUMBER;        // our scanner provides numbers as integers
+
+terminal Integer    IVAL; 
+terminal Float RVAL;
+terminal Boolean BVAL; 
+terminal BGSOUND, BASE, ISINDEX, LINK, META, NEXTID;
+terminal styleOpen, styleClose, plainText, scriptOpen, scriptClose, addressOpen, addressClose;
+terminal EMBED, IFRAME, IMG, SPACER, WBR, PARAM;
+terminal appletOpen, appletClose, abbrOpen, abbrClose, acronymOpen, acronymClose, citeOpen, citeClose, codeOpen, codeClose;
+terminal dfnOpen, dfnClose, emOpen, emClose, kbdOpen, kbdClose, qOpen, qClose, strongOpen, strongClose, varOpen, varClose, ilayerOpen,ilayerClose;
+terminal noembedOpen, noembedClose, noscriptOpen, noscriptClose, objectOpen, objectClose, bdoOpen, bdoClose, blinkOpen, blinkClose;
+terminal sOpen, sClose, spanOpen, spanClose, strikeOpen, strikeClose, ttOpen, ttClose, marqueeOpen, marqueeClose, basefontOpen,basefontClose, blockquoteOpen, blockquoteClose, dirOpen, dirClose;
+terminal endTag, bodyOpen, bodyClose, frameOpen, framesetOpen, framesetClose;
+terminal noframesOpen, noframesClose, formOpen, formClose;
+terminal input, selectOpen, selectClose, optionOpen, optionClose;
+terminal tableOpen, tableClose, trOpen, trClose, tdOpen, tdClose;
+terminal thOpen, thClose, thread, tbody, img, aOpen, aClose;
+terminal ulOpen, ulClose, liOpen, liClose, olOpen, olClose;
+terminal pOpen, pClose, iOpen, iClose, uOpen, uClose;
+terminal colon, comma, semicolon, assign, nobrOpen, bigClose, bigOpen, nobrClose;
+terminal bOpen, bClose, smallOpen, smallClose, supOpen, supClose;
+terminal subOpen, subClose, centerOpen, centerClose, fontOpen, fontClose;
+terminal h1Open, h1Close, h2Open, h2Close, h3Open, h3Close, thead;
+terminal h4Open, h4Close, h5Open, h5Close, h6Open, h6Close, hr, br, divisionOpen, divisionClose;
+terminal htmlOpen, htmlClose, headOpen, headClose, titleOpen, titleClose;
+terminal dlOpen, dlClose, dtOpen, dtClose, ddOpen, ddClose, KEYGEN, fieldsetOpen, fieldsetClose , legendOpen, legendClose ;
+terminal LABEL, textareaOpen, textareaClose, optgroupOpen, optgroupClose, listingOpen, listingClose, menuOpen, menuClose ;
+terminal multicolOpen, multicolClose, preOpen, preClose, captionOpen, captionClose, COLGROUP, COL, tfoot, xmpOpen, xmpClose ;
+terminal delOpen, delClose, insOpen, insClose, layerOpen, layerClose, mapOpen, mapClose, AREA ; 
+terminal ID, comment, whitespace;
+
+
+/* Non terminals */
+non terminal            expr_list;
+non terminal Integer    expr;      // used to store evaluated subexpressions
+
+non terminal html_document, html_tag, html_content, head_tag, head_content, style_tag, title_tag, script_tag;
+non terminal address_content, body_content, address_tag, body_tag, frameset_tag, p_tag, text, text_content, block, del_tag, heading;
+non terminal ins_tag, layer_tag, map_tag, marquee_tag, a_tag, applet_tag, content_style, ilayer_tag, noembed_tag, noscript_tag, object_tag;
+non terminal physical_style, a_content, h1_tag, h2_tag, h3_tag, h4_tag, h5_tag, h6_tag, applet_content, abbr_tag, cite_tag, em_tag, dfn_tag;
+non terminal acronym_tag, code_tag, kbd_tag, q_tag, strong_tag, var_tag, small_tag, s_tag, i_tag, bdo_tag, big_tag, b_tag, object_content;
+non terminal blink_tag, font_tag, span_tag, strike_tag, tt_tag, sub_tag, sup_tag, u_tag, style_text, block_content, map_content, frameset_content;
+non terminal xmp_tag, ul_tag, noframes_tag, li_tag, flow, flow_content, basefont_tag, center_tag, div_tag, dir_tag, blockquote_tag, dl_tag;
+non terminal form_tag, table_tag, menu_tag, ol_tag, listing_tag, pre_tag, multicol_tag, nobr_tag, caption_tag, pre_content, tr_tag;
+non terminal dd_tag, dt_tag, dl_content, form_content, legend_tag, label_content, label_tag, textarea_tag, table_content, colgroup_tag;
+non terminal table_cell, th_tag, td_tag, literal_text, optgroup_tag, option_tag, colgroup_content, select_content, select_tag, fieldset_tag;
+
+/* The grammar rules */       
+html_document ::=
+              html_tag;
+
+html_tag ::=
+          htmlOpen endTag html_content htmlClose endTag ;
+
+html_content ::=
+         head_tag body_tag 
+         | head_tag frameset_tag ;  
+         
+head_tag ::=
+         headOpen endTag 
+         head_content 
+         headClose endTag ;
+
+head_content ::= BASE endTag
+               | ISINDEX endTag
+               | LINK endTag
+               | META endTag
+               | NEXTID endTag
+               | style_tag 
+               | title_tag 
+               | script_tag ;
+
+style_tag ::= styleOpen endTag 
+            plainText endTag 
+            styleClose endTag ;
+
+title_tag ::= titleOpen endTag plainText endTag titleClose endTag ;
+
+script_tag ::= scriptOpen endTag plainText endTag scriptClose endTag ;
+
+body_tag ::= bodyOpen endTag 
+           body_content 
+           bodyClose endTag ;
+
+body_content ::= 
+            BGSOUND
+            | hr
+            | address_tag 
+            | block  
+            | del_tag 
+            | heading 
+            | ins_tag 
+            | layer_tag 
+            | map_tag 
+            | marquee_tag 
+            | text ; 
+
+address_tag ::= 
+              addressOpen endTag 
+              address_content 
+              addressClose endTag ;
+
+address_content ::= 
+                p_tag 
+                | text  ;
+
+p_tag ::= pOpen endTag text pClose endTag ;
+
+text ::= text_content ;
+
+text_content ::= 
+              br endTag
+              | EMBED endTag
+              | IFRAME endTag
+              | IMG endTag
+              | SPACER endTag
+              | WBR endTag
+              | a_tag 
+              | applet_tag 
+              | content_style 
+              | ilayer_tag 
+              | noembed_tag 
+              | noscript_tag 
+              | object_tag 
+              | plainText endTag
+              | physical_style ;
+
+a_tag ::= aOpen endTag 
+        a_content 
+        aClose endTag ;
+
+a_content ::=
+          heading
+          | text ;
+
+heading ::= 
+         h1_tag 
+         | h2_tag 
+         | h3_tag 
+         | h4_tag 
+         | h5_tag 
+         | h6_tag ; 
+
+h1_tag ::= h1Open endTag text h1Close endTag ;
+
+h2_tag ::= h2Open endTag text h2Close endTag ;
+
+h3_tag ::= h3Open endTag text h3Close endTag ;
+
+h4_tag ::= h4Open endTag text h4Close endTag ;
+
+h5_tag ::= h5Open endTag text h5Close endTag ;
+
+h6_tag ::= h6Open endTag text h6Close endTag ;
+      
+applet_tag ::= appletOpen endTag
+             applet_content 
+             appletClose endTag ;
+
+applet_content ::= PARAM endTag
+                 body_content ;  
+
+content_style ::= abbr_tag 
+                | acronym_tag 
+                | cite_tag 
+                | code_tag 
+                | dfn_tag  
+                | em_tag 
+                | kbd_tag 
+                | q_tag 
+                | strong_tag 
+                | var_tag ; 
+
+abbr_tag ::= abbrOpen endTag text abbrClose endTag ;
+
+acronym_tag ::= acronymOpen endTag text acronymClose endTag ;
+
+cite_tag ::= citeOpen endTag text citeClose endTag ;
+
+code_tag ::= codeOpen endTag text codeClose endTag ;
+
+dfn_tag ::= dfnOpen endTag text dfnClose ;
+
+em_tag ::= emOpen endTag text emClose endTag ;
+
+kbd_tag ::= kbdOpen endTag text kbdClose endTag ;
+
+q_tag ::= qOpen endTag text qClose endTag ;
+
+strong_tag ::= strongOpen endTag text strongClose endTag ;
+
+var_tag ::= varOpen endTag text varClose endTag ;
+
+ilayer_tag ::= ilayerOpen endTag body_content ilayerClose endTag ;
+
+noembed_tag ::= noembedOpen endTag text noembedClose endTag ;
+
+noscript_tag ::= noscriptOpen endTag text noscriptClose endTag ;
+
+object_tag ::= objectOpen endTag
+             object_content
+             objectClose endTag ;
+
+object_content ::= PARAM endTag body_content ;
+
+physical_style ::= 
+                b_tag 
+                | bdo_tag 
+                | big_tag 
+                | blink_tag 
+                | font_tag 
+                | i_tag
+                | s_tag 
+                | small_tag
+                | span_tag 
+                | strike_tag 
+                | sub_tag 
+                | sup_tag 
+                | tt_tag 
+                | u_tag ;
+
+b_tag ::= bOpen endTag text bClose endTag ;
+
+bdo_tag ::= bdoOpen endTag text bdoClose endTag ;
+
+big_tag ::= bigOpen endTag text bigClose endTag ;
+
+blink_tag ::= blinkOpen endTag text blinkClose endTag ;
+
+font_tag ::= fontOpen endTag
+           style_text 
+           fontClose endTag ;
+
+i_tag ::= iOpen endTag text iClose endTag ;
+
+s_tag ::= sOpen endTag text sClose endTag ;
+
+small_tag ::= smallOpen endTag text smallClose endTag ;
+
+span_tag ::= spanOpen endTag text spanClose endTag ;
+
+strike_tag ::= strikeOpen endTag text strikeClose endTag ;
+
+sub_tag ::= subOpen endTag text subClose endTag ;
+
+sup_tag ::= supOpen endTag text supClose endTag ;
+
+tt_tag ::= ttOpen endTag text ttClose endTag ;
+
+u_tag ::= uOpen endTag text uClose endTag ;
+
+marquee_tag ::= marqueeOpen endTag style_text marqueeClose endTag ;
+
+style_text ::= i_tag ;
+
+block ::= block_content ;
+
+block_content ::= ISINDEX
+                | basefont_tag
+                | blockquote_tag 
+                | center_tag 
+                | dir_tag 
+                | div_tag 
+                | dl_tag 
+                | form_tag 
+                | listing_tag 
+                | menu_tag 
+                | multicol_tag 
+                | nobr_tag 
+                | ol_tag 
+                | p_tag 
+                | pre_tag  
+                | table_tag 
+                | ul_tag 
+                | xmp_tag ;
+                
+basefont_tag ::= basefontOpen endTag body_content basefontClose endTag ;
+
+blockquote_tag ::= blockquoteOpen endTag body_content blockquoteClose endTag ;
+
+center_tag ::= centerOpen endTag body_content centerClose endTag ;
+
+dir_tag ::= dirOpen endTag 
+          li_tag 
+          dirClose endTag ;
+
+li_tag ::= liOpen endTag 
+         flow   
+         liClose endTag ;
+
+flow ::= flow_content ;
+
+flow_content ::= block | text ;
+                      
+div_tag ::=
+         divisionOpen endTag body_content divisionClose endTag ; 
+
+dl_tag ::= dlOpen endTag dl_content dlClose endTag ;
+
+dl_content ::= dt_tag 
+             dd_tag ; 
+
+dt_tag ::= dtOpen endTag text dtClose endTag ;
+
+dd_tag ::= ddOpen endTag flow ddClose endTag ;
+
+form_tag ::= formOpen endTag form_content formClose endTag ;
+
+form_content ::= input endTag 
+               | KEYGEN endTag 
+               | body_content 
+               | fieldset_tag 
+               | label_tag 
+               | select_tag 
+               | textarea_tag ; 
+
+fieldset_tag ::= fieldsetOpen endTag
+               legend_tag 
+               form_content
+               fieldsetClose endTag ;
+
+legend_tag ::= legendOpen endTag text legendClose endTag ;
+
+label_tag ::= LABEL endTag
+            label_content 
+            formClose endTag ;
+
+label_content ::= input
+                | body_content
+                | select_tag 
+                | textarea_tag ; 
+
+textarea_tag ::= textareaOpen endTag plainText textareaClose endTag ;
+
+select_tag ::= selectOpen endTag 
+             select_content 
+             selectClose endTag ; 
+
+select_content ::= optgroup_tag 
+                 | option_tag ; 
+
+option_tag ::= optionOpen endTag plainText optionClose endTag ;
+
+optgroup_tag ::= optgroupOpen endTag 
+               option_tag 
+               optgroupClose endTag ;
+
+listing_tag ::= listingOpen endTag 
+              literal_text 
+              listingClose endTag ;
+
+literal_text ::= pre_tag ;
+
+menu_tag ::= menuOpen endTag 
+           li_tag 
+           menuClose endTag ;
+
+li_tag ::= liOpen endTag flow liClose endTag ;
+
+multicol_tag ::= multicolOpen endTag body_content multicolClose endTag ;
+
+nobr_tag ::= nobrOpen endTag text nobrClose endTag ;
+
+ol_tag ::= olOpen endTag li_tag olClose endTag ;
+
+pre_tag ::= preOpen endTag
+          pre_content 
+          preClose endTag ;
+
+pre_content ::= br
+              | hr
+              | a_tag
+	      | style_text ;
+
+table_tag ::= tableOpen endTag 
+            caption_tag  
+            colgroup_tag 
+            table_content 
+            tableClose endTag ;
+
+caption_tag ::= captionOpen endTag body_content captionClose endTag ;
+
+colgroup_tag ::= COLGROUP endTag 
+               colgroup_content ; 
+
+colgroup_content ::= COL ;
+
+table_content ::= tbody 
+                | tfoot
+                | thead
+                | tr_tag ; 
+            
+tr_tag ::= trOpen endTag 
+         table_cell 
+         trClose endTag ;
+
+table_cell ::= td_tag 
+             | th_tag ; 
+
+th_tag ::= thOpen endTag body_content thClose endTag ;
+
+td_tag ::= tdOpen endTag body_content tdClose endTag ;
+
+ul_tag ::= ulOpen endTag 
+         li_tag 
+         ulClose endTag ;
+
+xmp_tag ::= xmpOpen endTag 
+          literal_text
+          xmpClose endTag ; 
+
+del_tag ::= delOpen endTag flow delClose endTag ;
+
+ins_tag ::= insOpen endTag flow insClose endTag ;
+
+layer_tag ::= layerOpen endTag body_content layerClose endTag ;
+
+map_tag ::= mapOpen endTag map_content mapClose endTag ;
+
+map_content ::= AREA ;
+
+frameset_tag ::= framesetOpen endTag 
+               frameset_content 
+               framesetClose endTag ;
+
+frameset_content ::= frameOpen endTag 
+                   | noframes_tag ;
+
+noframes_tag ::= noframesOpen endTag 
+               body_content
+               noframesClose endTag ;  
